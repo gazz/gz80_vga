@@ -1,0 +1,130 @@
+                        ; --------------------------------------
+                        ; zasm: assemble "vga.asm"
+                        ; date: 2021-02-26 12:39:32
+                        ; --------------------------------------
+
+
+00F5:                   ClearDisplay equ 0xf5
+05C2:                   PIOOut equ 0x5C2
+039B:                   ApplicationReturn equ 0x39B
+                        ; set caret anywhere on the screen
+                        ; b - offset, 64 (0x40) is 2nd line
+                        ; c - offset on the line
+011A:                   SetCaretRaw_bios equ 0x11A
+                        
+04EE:                   OutHex equ $04EE
+0293:                   NumToHex equ $0293
+050A:                   DisableCursor equ $050A
+056B:                   Wait_PS2ScanCode equ $056B
+00C2:                   StringOut equ 0xc2
+                        
+                        ; there are RAM mapped
+203E:                   STATE_KEYSTROKE equ $203E
+2042:                   STATE_SCANCODE equ $2042
+0060:                   Wait equ 0x60
+                        
+                        ; PIO direct access
+0004:                   PORTA 	equ 0x4
+0005:                   PORTB 	equ 0x5
+0006:                   PORTAC 	equ 0x6
+0007:                   PORTBC 	equ 0x7
+                        
+000C:                   PORT2A 	equ 0xc
+000D:                   PORT2B 	equ 0xd
+000E:                   PORT2AC equ 0xe
+000F:                   PORT2BC equ 0xf
+                        
+                        
+                        #target bin
+2082:                   #code _CODE, 0x2082, 0x100
+                        #code _CODE
+                        
+                        ; app entry point
+2082: 1818     [12]     	jr main
+                        
+2084:                   test_stringout:
+2084: 1600     [ 7]     	ld d, DSP_DW
+***ERROR***             	            ^ label "DSP_DW" not found
+2086:                   soutloop:
+2086: 7E       [ 7]     	ld a, (hl)
+2087: B7       [11]     	or a
+2088: C8       [16|22]  	ret z
+                        
+2089: 5E       [23]     	ld e, (hl)
+208A: CD0000   [40]     	call charout
+***ERROR***             	            ^ label "charout" not found
+208D: 23       [46]     	inc hl
+208E: C38620   [56]     	jp soutloop
+                        	
+2091: C9       [66]     	ret
+                        
+                        
+2092: 56474120          TXT .asciz "VGA TEST!"
+2096: 54455354          
+209A: 2100              
+                        
+209C:                   main:
+209C: CDF500   [17]     	call ClearDisplay
+                        
+209F:                   runloop:
+                        
+209F: 219220   [10]     	ld hl, TXT
+20A2: CD8420   [27]     	call test_stringout
+                        
+                        	; wait for input
+                        	; call Wait_PS2ScanCode
+                        
+20A5: 18F8     [39]     	jr runloop
+                        
+20A7:                   exit:
+                        	;halt
+20A7: C39B03   [10]     	jp ApplicationReturn
+
+
+; +++ segments +++
+
+#CODE _CODE    = $2082 =  8322,  size = $0100 =   256
+
+; +++ global symbols +++
+
+ApplicationReturn = $039B =   923          vga.asm:3
+ClearDisplay      = $00F5 =   245          vga.asm:1
+DSP_DW            = ***UNDEFINED***
+DisableCursor     = $050A =  1290          vga.asm:11 (unused)
+NumToHex          = $0293 =   659          vga.asm:10 (unused)
+OutHex            = $04EE =  1262          vga.asm:9 (unused)
+PIOOut            = $05C2 =  1474          vga.asm:2 (unused)
+PORT2A            = $000C =    12          vga.asm:26 (unused)
+PORT2AC           = $000E =    14          vga.asm:28 (unused)
+PORT2B            = $000D =    13          vga.asm:27 (unused)
+PORT2BC           = $000F =    15          vga.asm:29 (unused)
+PORTA             = $0004 =     4          vga.asm:21 (unused)
+PORTAC            = $0006 =     6          vga.asm:23 (unused)
+PORTB             = $0005 =     5          vga.asm:22 (unused)
+PORTBC            = $0007 =     7          vga.asm:24 (unused)
+STATE_KEYSTROKE   = $203E =  8254          vga.asm:16 (unused)
+STATE_SCANCODE    = $2042 =  8258          vga.asm:17 (unused)
+SetCaretRaw_bios  = $011A =   282          vga.asm:7 (unused)
+StringOut         = $00C2 =   194          vga.asm:13 (unused)
+TXT               = $2092 =  8338  _CODE   vga.asm:54
+Wait              = $0060 =    96          vga.asm:18 (unused)
+Wait_PS2ScanCode  = $056B =  1387          vga.asm:12 (unused)
+_CODE             = $2082 =  8322  _CODE   vga.asm:32 (unused)
+_CODE_end         = $2182 =  8578  _CODE   vga.asm:32 (unused)
+_CODE_size        = $0100 =   256  _CODE   vga.asm:32 (unused)
+charout           = ***UNDEFINED***
+exit              = $20A7 =  8359  _CODE   vga.asm:69 (unused)
+main              = $209C =  8348  _CODE   vga.asm:56
+runloop           = $209F =  8351  _CODE   vga.asm:59
+soutloop          = $2086 =  8326  _CODE   vga.asm:41
+test_stringout    = $2084 =  8324  _CODE   vga.asm:39
+
+
+; +++ used but undefined or unresolved labels +++
+
+DSP_DW  = ***undefined***
+charout = ***undefined***
+
+
+total time: 0.0016 sec.
+2 errors
