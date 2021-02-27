@@ -1,84 +1,146 @@
                         ; --------------------------------------
                         ; zasm: assemble "vga.asm"
-                        ; date: 2021-02-26 12:39:32
+                        ; date: 2021-02-26 22:46:16
                         ; --------------------------------------
 
 
-00F5:                   ClearDisplay equ 0xf5
-05C2:                   PIOOut equ 0x5C2
-039B:                   ApplicationReturn equ 0x39B
-                        ; set caret anywhere on the screen
-                        ; b - offset, 64 (0x40) is 2nd line
-                        ; c - offset on the line
-011A:                   SetCaretRaw_bios equ 0x11A
-                        
-04EE:                   OutHex equ $04EE
-0293:                   NumToHex equ $0293
-050A:                   DisableCursor equ $050A
-056B:                   Wait_PS2ScanCode equ $056B
-00C2:                   StringOut equ 0xc2
-                        
-                        ; there are RAM mapped
-203E:                   STATE_KEYSTROKE equ $203E
-2042:                   STATE_SCANCODE equ $2042
-0060:                   Wait equ 0x60
-                        
-                        ; PIO direct access
-0004:                   PORTA 	equ 0x4
-0005:                   PORTB 	equ 0x5
-0006:                   PORTAC 	equ 0x6
-0007:                   PORTBC 	equ 0x7
-                        
-000C:                   PORT2A 	equ 0xc
-000D:                   PORT2B 	equ 0xd
-000E:                   PORT2AC equ 0xe
-000F:                   PORT2BC equ 0xf
-                        
+                        #include "../gz80_bios/bios_include.asm" 
+2080:                   APP_LOC				equ $2080
+2028:                   CARRET_POS          equ $2028
+01C0:                   CmpLoop             equ $01C0
+01B4:                   CmpStrings          equ $01B4
+2029:                   DISP_LINE           equ $2029
+0001:                   DSP_CLR             equ $0001
+0005:                   DSP_DW              equ $0005
+0003:                   DSP_IR              equ $0003
+0002:                   DSP_IRC             equ $0002
+0001:                   DSP_IW              equ $0001
+0006:                   DSP_MI              equ $0006
+000E:                   DSP_ON              equ $000E
+0002:                   DSP_RH              equ $0002
+0376:                   Hex1                equ $0376
+0365:                   HexToNum            equ $0365
+0626:                   INT_YO              equ $0626
+2000:                   LCD1                equ $2000
+2014:                   LCD2                equ $2014
+03C4:                   LOAD_CMD            equ $03C4
+01E8:                   LOAD_TITLE1         equ $01E8
+2046:                   MONITOR_ADDR        equ $2046
+040E:                   MONITOR_CMD         equ $040E
+01CE:                   NoMatch             equ $01CE
+02A7:                   Num1                equ $02A7
+02AB:                   Num2                equ $02AB
+029C:                   NumToHex            equ $029C
+04F7:                   OutHex              equ $04F7
+03CF:                   PEEK0_CMD           equ $03CF
+03D6:                   PEEK1_CMD           equ $03D6
+03DD:                   PEEK2_CMD           equ $03DD
+03E4:                   PEEK3_CMD           equ $03E4
+03EB:                   PEEK4_CMD           equ $03EB
+03F2:                   PEEK5_CMD           equ $03F2
+03F9:                   PEEK6_CMD           equ $03F9
+0400:                   PEEK7_CMD           equ $0400
+0407:                   PEEK_CMD            equ $0407
+0004:                   PORTA               equ $0004
+0006:                   PORTAC              equ $0006
+0005:                   PORTB               equ $0005
+0007:                   PORTBC              equ $0007
+055C:                   PS2_SERIAL_INIT     equ $055C
+03BD:                   RESET_CMD           equ $03BD
+0382:                   RUN_APP_TXT         equ $0382
+03CA:                   RUN_CMD             equ $03CA
+0008:                   SERA                equ $0008
+000A:                   SERAC               equ $000A
+0009:                   SERB                equ $0009
+000B:                   SERBC               equ $000B
+0043:                   SERIAL_INIT         equ $0043
+0612:                   SHELL               equ $0612
+4000:                   SPADDR              equ $4000
+01BB:                   Str1IsBigger        equ $01BB
+202A:                   TMP_STR             equ $202A
+05FE:                   WELCOME             equ $05FE
+03A4:                   app_ret             equ $03A4
+00B8:                   backspace           equ $00B8
+008E:                   charout             equ $008E
+00F5:                   cleardisplay        equ $00F5
+0417:                   commandeval         equ $0417
+03A8:                   copy_screen_to_temp equ $03A8
+00DC:                   default_lcd_lines   equ $00DC
+045B:                   disablecursor       equ $045B
+0262:                   display_app_bytes   equ $0262
+0068:                   exwait              equ $0068
+0566:                   init_ps2_keyboard   equ $0566
+0189:                   initdisplay         equ $0189
+004D:                   initpio             equ $004D
+0054:                   initserial          equ $0054
+0633:                   interrupt_handler   equ $0633
+203E:                   keystroke           equ $203E
+0162:                   line_feed           equ $0162
+01FA:                   load                equ $01FA
+0072:                   longwait            equ $0072
+067B:                   monitor             equ $067B
+00C2:                   mstringout          equ $00C2
+00BD:                   newline_char        equ $00BD
+0269:                   outbytes            equ $0269
+02B3:                   peek                equ $02B3
+0276:                   peek0               equ $0276
+032D:                   peek_pos            equ $032D
+05CB:                   pioout              equ $05CB
+007C:                   pioout_slow         equ $007C
+00CF:                   raw_textout         equ $00CF
+01D3:                   reset               equ $01D3
+0130:                   return_shell        equ $0130
+0392:                   run_app             equ $0392
+2042:                   scancode            equ $2042
+0112:                   set_carret_2nd_line equ $0112
+0103:                   set_carret_home     equ $0103
+011A:                   set_carret_raw      equ $011A
+066A:                   set_def_mon_address equ $066A
+008A:                   sioout              equ $008A
+00B8:                   skip                equ $00B8
+00C4:                   soutloop            equ $00C4
+0060:                   wait                equ $0060
+051B:                   wait_keystroke      equ $051B
+0574:                   wait_ps2_scancode   equ $0574
+04ED:                   waitserial          equ $04ED
+202A:                   TMP_STR            	equ $202A
+204C:                   T_MILIS            	equ $204C
+2050:                   T_MINUTES         	equ $2050
+204A:                   T_RAW_MILIS        	equ $204A
+204E:                   T_SECONDS          	equ $204E
+06BD:                   DigitU16_ToASCII	equ $06BD
+0694:                   DigitU8_ToASCII		equ $0694
+0686:                   DigitU8_ToASCII_3digit	equ $0686
                         
                         #target bin
 2082:                   #code _CODE, 0x2082, 0x100
                         #code _CODE
                         
                         ; app entry point
-2082: 1818     [12]     	jr main
+2082: 180A     [12]     	jr main
                         
-2084:                   test_stringout:
-2084: 1600     [ 7]     	ld d, DSP_DW
-***ERROR***             	            ^ label "DSP_DW" not found
-2086:                   soutloop:
-2086: 7E       [ 7]     	ld a, (hl)
-2087: B7       [11]     	or a
-2088: C8       [16|22]  	ret z
+2084: 56474120          TXT .asciz "VGA TEST!"
+2088: 54455354          
+208C: 2100              
                         
-2089: 5E       [23]     	ld e, (hl)
-208A: CD0000   [40]     	call charout
-***ERROR***             	            ^ label "charout" not found
-208D: 23       [46]     	inc hl
-208E: C38620   [56]     	jp soutloop
-                        	
-2091: C9       [66]     	ret
+208E:                   main:
+208E: CDF500   [17]     	call cleardisplay
                         
+2091:                   runloop:
+2091: 0600     [ 7]     	ld b, 0
+2093: 0E00     [14]     	ld c, 0
+2095: CD1A01   [31]     	call set_carret_raw
                         
-2092: 56474120          TXT .asciz "VGA TEST!"
-2096: 54455354          
-209A: 2100              
+2098: 218420   [41]     	ld hl, TXT
+209B: CDC200   [58]     	call mstringout
                         
-209C:                   main:
-209C: CDF500   [17]     	call ClearDisplay
+209E: CD7200   [75]     	call longwait
                         
-209F:                   runloop:
+20A1: 18EE     [87]     	jr runloop
                         
-209F: 219220   [10]     	ld hl, TXT
-20A2: CD8420   [27]     	call test_stringout
-                        
-                        	; wait for input
-                        	; call Wait_PS2ScanCode
-                        
-20A5: 18F8     [39]     	jr runloop
-                        
-20A7:                   exit:
+20A3:                   exit:
                         	;halt
-20A7: C39B03   [10]     	jp ApplicationReturn
+20A3: C3A403   [10]     	jp app_ret
 
 
 ; +++ segments +++
@@ -87,44 +149,119 @@
 
 ; +++ global symbols +++
 
-ApplicationReturn = $039B =   923          vga.asm:3
-ClearDisplay      = $00F5 =   245          vga.asm:1
-DSP_DW            = ***UNDEFINED***
-DisableCursor     = $050A =  1290          vga.asm:11 (unused)
-NumToHex          = $0293 =   659          vga.asm:10 (unused)
-OutHex            = $04EE =  1262          vga.asm:9 (unused)
-PIOOut            = $05C2 =  1474          vga.asm:2 (unused)
-PORT2A            = $000C =    12          vga.asm:26 (unused)
-PORT2AC           = $000E =    14          vga.asm:28 (unused)
-PORT2B            = $000D =    13          vga.asm:27 (unused)
-PORT2BC           = $000F =    15          vga.asm:29 (unused)
-PORTA             = $0004 =     4          vga.asm:21 (unused)
-PORTAC            = $0006 =     6          vga.asm:23 (unused)
-PORTB             = $0005 =     5          vga.asm:22 (unused)
-PORTBC            = $0007 =     7          vga.asm:24 (unused)
-STATE_KEYSTROKE   = $203E =  8254          vga.asm:16 (unused)
-STATE_SCANCODE    = $2042 =  8258          vga.asm:17 (unused)
-SetCaretRaw_bios  = $011A =   282          vga.asm:7 (unused)
-StringOut         = $00C2 =   194          vga.asm:13 (unused)
-TXT               = $2092 =  8338  _CODE   vga.asm:54
-Wait              = $0060 =    96          vga.asm:18 (unused)
-Wait_PS2ScanCode  = $056B =  1387          vga.asm:12 (unused)
-_CODE             = $2082 =  8322  _CODE   vga.asm:32 (unused)
-_CODE_end         = $2182 =  8578  _CODE   vga.asm:32 (unused)
-_CODE_size        = $0100 =   256  _CODE   vga.asm:32 (unused)
-charout           = ***UNDEFINED***
-exit              = $20A7 =  8359  _CODE   vga.asm:69 (unused)
-main              = $209C =  8348  _CODE   vga.asm:56
-runloop           = $209F =  8351  _CODE   vga.asm:59
-soutloop          = $2086 =  8326  _CODE   vga.asm:41
-test_stringout    = $2084 =  8324  _CODE   vga.asm:39
+APP_LOC           = $2080 =  8320          bios_include.asm:1 (unused)
+CARRET_POS        = $2028 =  8232          bios_include.asm:2 (unused)
+CmpLoop           = $01C0 =   448          bios_include.asm:3 (unused)
+CmpStrings        = $01B4 =   436          bios_include.asm:4 (unused)
+DISP_LINE         = $2029 =  8233          bios_include.asm:5 (unused)
+DSP_CLR           = $0001 =     1          bios_include.asm:6 (unused)
+DSP_DW            = $0005 =     5          bios_include.asm:7 (unused)
+DSP_IR            = $0003 =     3          bios_include.asm:8 (unused)
+DSP_IRC           = $0002 =     2          bios_include.asm:9 (unused)
+DSP_IW            = $0001 =     1          bios_include.asm:10 (unused)
+DSP_MI            = $0006 =     6          bios_include.asm:11 (unused)
+DSP_ON            = $000E =    14          bios_include.asm:12 (unused)
+DSP_RH            = $0002 =     2          bios_include.asm:13 (unused)
+DigitU16_ToASCII  = $06BD =  1725          bios_include.asm:104 (unused)
+DigitU8_ToASCII   = $0694 =  1684          bios_include.asm:105 (unused)
+DigitU8_ToASCII_3digit = $0686 =  1670          bios_include.asm:106 (unused)
+Hex1              = $0376 =   886          bios_include.asm:14 (unused)
+HexToNum          = $0365 =   869          bios_include.asm:15 (unused)
+INT_YO            = $0626 =  1574          bios_include.asm:16 (unused)
+LCD1              = $2000 =  8192          bios_include.asm:17 (unused)
+LCD2              = $2014 =  8212          bios_include.asm:18 (unused)
+LOAD_CMD          = $03C4 =   964          bios_include.asm:19 (unused)
+LOAD_TITLE1       = $01E8 =   488          bios_include.asm:20 (unused)
+MONITOR_ADDR      = $2046 =  8262          bios_include.asm:21 (unused)
+MONITOR_CMD       = $040E =  1038          bios_include.asm:22 (unused)
+NoMatch           = $01CE =   462          bios_include.asm:23 (unused)
+Num1              = $02A7 =   679          bios_include.asm:24 (unused)
+Num2              = $02AB =   683          bios_include.asm:25 (unused)
+NumToHex          = $029C =   668          bios_include.asm:26 (unused)
+OutHex            = $04F7 =  1271          bios_include.asm:27 (unused)
+PEEK0_CMD         = $03CF =   975          bios_include.asm:28 (unused)
+PEEK1_CMD         = $03D6 =   982          bios_include.asm:29 (unused)
+PEEK2_CMD         = $03DD =   989          bios_include.asm:30 (unused)
+PEEK3_CMD         = $03E4 =   996          bios_include.asm:31 (unused)
+PEEK4_CMD         = $03EB =  1003          bios_include.asm:32 (unused)
+PEEK5_CMD         = $03F2 =  1010          bios_include.asm:33 (unused)
+PEEK6_CMD         = $03F9 =  1017          bios_include.asm:34 (unused)
+PEEK7_CMD         = $0400 =  1024          bios_include.asm:35 (unused)
+PEEK_CMD          = $0407 =  1031          bios_include.asm:36 (unused)
+PORTA             = $0004 =     4          bios_include.asm:37 (unused)
+PORTAC            = $0006 =     6          bios_include.asm:38 (unused)
+PORTB             = $0005 =     5          bios_include.asm:39 (unused)
+PORTBC            = $0007 =     7          bios_include.asm:40 (unused)
+PS2_SERIAL_INIT   = $055C =  1372          bios_include.asm:41 (unused)
+RESET_CMD         = $03BD =   957          bios_include.asm:42 (unused)
+RUN_APP_TXT       = $0382 =   898          bios_include.asm:43 (unused)
+RUN_CMD           = $03CA =   970          bios_include.asm:44 (unused)
+SERA              = $0008 =     8          bios_include.asm:45 (unused)
+SERAC             = $000A =    10          bios_include.asm:46 (unused)
+SERB              = $0009 =     9          bios_include.asm:47 (unused)
+SERBC             = $000B =    11          bios_include.asm:48 (unused)
+SERIAL_INIT       = $0043 =    67          bios_include.asm:49 (unused)
+SHELL             = $0612 =  1554          bios_include.asm:50 (unused)
+SPADDR            = $4000 = 16384          bios_include.asm:51 (unused)
+Str1IsBigger      = $01BB =   443          bios_include.asm:52 (unused)
+TMP_STR           = $202A =  8234          bios_include.asm:99 (unused)
+TXT               = $2084 =  8324  _CODE   vga.asm:10
+T_MILIS           = $204C =  8268          bios_include.asm:100 (unused)
+T_MINUTES         = $2050 =  8272          bios_include.asm:101 (unused)
+T_RAW_MILIS       = $204A =  8266          bios_include.asm:102 (unused)
+T_SECONDS         = $204E =  8270          bios_include.asm:103 (unused)
+WELCOME           = $05FE =  1534          bios_include.asm:54 (unused)
+_CODE             = $2082 =  8322  _CODE   bios_include.asm:2 (unused)
+_CODE_end         = $2182 =  8578  _CODE   bios_include.asm:2 (unused)
+_CODE_size        = $0100 =   256  _CODE   bios_include.asm:2 (unused)
+app_ret           = $03A4 =   932          bios_include.asm:55
+backspace         = $00B8 =   184          bios_include.asm:56 (unused)
+charout           = $008E =   142          bios_include.asm:57 (unused)
+cleardisplay      = $00F5 =   245          bios_include.asm:58
+commandeval       = $0417 =  1047          bios_include.asm:59 (unused)
+copy_screen_to_temp = $03A8 =   936          bios_include.asm:60 (unused)
+default_lcd_lines = $00DC =   220          bios_include.asm:61 (unused)
+disablecursor     = $045B =  1115          bios_include.asm:62 (unused)
+display_app_bytes = $0262 =   610          bios_include.asm:63 (unused)
+exit              = $20A3 =  8355  _CODE   vga.asm:27 (unused)
+exwait            = $0068 =   104          bios_include.asm:64 (unused)
+init_ps2_keyboard = $0566 =  1382          bios_include.asm:65 (unused)
+initdisplay       = $0189 =   393          bios_include.asm:66 (unused)
+initpio           = $004D =    77          bios_include.asm:67 (unused)
+initserial        = $0054 =    84          bios_include.asm:68 (unused)
+interrupt_handler = $0633 =  1587          bios_include.asm:69 (unused)
+keystroke         = $203E =  8254          bios_include.asm:70 (unused)
+line_feed         = $0162 =   354          bios_include.asm:71 (unused)
+load              = $01FA =   506          bios_include.asm:72 (unused)
+longwait          = $0072 =   114          bios_include.asm:73
+main              = $208E =  8334  _CODE   vga.asm:12
+monitor           = $067B =  1659          bios_include.asm:74 (unused)
+mstringout        = $00C2 =   194          bios_include.asm:75
+newline_char      = $00BD =   189          bios_include.asm:76 (unused)
+outbytes          = $0269 =   617          bios_include.asm:77 (unused)
+peek              = $02B3 =   691          bios_include.asm:78 (unused)
+peek0             = $0276 =   630          bios_include.asm:79 (unused)
+peek_pos          = $032D =   813          bios_include.asm:80 (unused)
+pioout            = $05CB =  1483          bios_include.asm:81 (unused)
+pioout_slow       = $007C =   124          bios_include.asm:82 (unused)
+raw_textout       = $00CF =   207          bios_include.asm:83 (unused)
+reset             = $01D3 =   467          bios_include.asm:84 (unused)
+return_shell      = $0130 =   304          bios_include.asm:85 (unused)
+run_app           = $0392 =   914          bios_include.asm:86 (unused)
+runloop           = $2091 =  8337  _CODE   vga.asm:15
+scancode          = $2042 =  8258          bios_include.asm:87 (unused)
+set_carret_2nd_line = $0112 =   274          bios_include.asm:88 (unused)
+set_carret_home   = $0103 =   259          bios_include.asm:89 (unused)
+set_carret_raw    = $011A =   282          bios_include.asm:90
+set_def_mon_address = $066A =  1642          bios_include.asm:91 (unused)
+sioout            = $008A =   138          bios_include.asm:92 (unused)
+skip              = $00B8 =   184          bios_include.asm:93 (unused)
+soutloop          = $00C4 =   196          bios_include.asm:94 (unused)
+wait              = $0060 =    96          bios_include.asm:95 (unused)
+wait_keystroke    = $051B =  1307          bios_include.asm:96 (unused)
+wait_ps2_scancode = $0574 =  1396          bios_include.asm:97 (unused)
+waitserial        = $04ED =  1261          bios_include.asm:98 (unused)
 
 
-; +++ used but undefined or unresolved labels +++
-
-DSP_DW  = ***undefined***
-charout = ***undefined***
-
-
-total time: 0.0016 sec.
-2 errors
+total time: 0.0034 sec.
+no errors
