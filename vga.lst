@@ -1,6 +1,6 @@
                         ; --------------------------------------
                         ; zasm: assemble "vga.asm"
-                        ; date: 2021-02-26 22:46:16
+                        ; date: 2021-02-27 14:25:12
                         ; --------------------------------------
 
 
@@ -112,8 +112,21 @@
 0694:                   DigitU8_ToASCII		equ $0694
 0686:                   DigitU8_ToASCII_3digit	equ $0686
                         
+0020:                   PIO2A 	equ 0x20
+0021:                   PIO2B 	equ 0x21
+0022:                   PIO2AC 	equ 0x22
+0023:                   PIO2BC 	equ 0x23
+                        
+0002:                   DSP_IRC	equ 0b00000010
+                        
+                        
+0001:                   VGA_DATA_ENABLE equ 0b00000001
+0002:                   VGA_CONTROL_ENABLE equ 0b00000010
+0004:                   VGA_WRITE_ENABLE equ 0b00000100
+0008:                   VGA_CHIP_ENABLE equ 0b00001000
+                        
                         #target bin
-2082:                   #code _CODE, 0x2082, 0x100
+2082:                   #code _CODE, 0x2082, 0x200
                         #code _CODE
                         
                         ; app entry point
@@ -123,29 +136,288 @@
 2088: 54455354          
 208C: 2100              
                         
-208E:                   main:
-208E: CDF500   [17]     	call cleardisplay
+208E:                   main:           
+                        	
+208E: CDAF20   [17]     	call initpio2
+2091: CDF500   [34]     	call cleardisplay
                         
-2091:                   runloop:
-2091: 0600     [ 7]     	ld b, 0
-2093: 0E00     [14]     	ld c, 0
-2095: CD1A01   [31]     	call set_carret_raw
+2094: 0600     [41]     	ld b, 0
+2096: 0E00     [48]     	ld c, 0
+2098: CD1A01   [65]     	call set_carret_raw
                         
-2098: 218420   [41]     	ld hl, TXT
-209B: CDC200   [58]     	call mstringout
+209B: 218420   [75]     	ld hl, TXT
+209E: CDC200   [92]     	call mstringout
                         
-209E: CD7200   [75]     	call longwait
+20A1: CDCA20   [109]    	call clear_vga_screen
                         
-20A1: 18EE     [87]     	jr runloop
+20A4: CD3E21   [126]    	call gz80_welcome
                         
-20A3:                   exit:
+20A7:                   runloop:
+                        
+20A7: CD4221   [17]     	call update_clock
+20AA: 18FB     [29]     	jr runloop
+                        
+20AC:                   exit:
                         	;halt
-20A3: C3A403   [10]     	jp app_ret
+20AC: C3A403   [10]     	jp app_ret
+                        
+                        
+20AF:                   initpio2:
+                        	; set ouput mode on PIO 
+20AF: 3E0F     [ 7]     	ld a, 0xf	; b00001111 is control byte for output
+                        	; b1 addresses pio in command mode
+20B1: D322     [18]     	out PIO2AC, a
+20B3: D323     [29]     	out PIO2BC, a
+20B5: C9       [39]     	ret	
+                        
+                        
+20B6:                   PIO2Out:
+                        	; output to pio & wait until busy flag clears
+20B6: 7A       [ 4]     	ld a, d
+20B7: D320     [15]     	out PIO2A, a
+20B9: 7B       [19]     	ld a, e
+20BA: D321     [30]     	out PIO2B, a
+20BC: C9       [40]     	ret
+                        
+20BD:                   freeze:
+                        #local
+20BD:                   stop:
+20BD: 76       [ 4]     	halt
+20BE: 18FD     [16]     	jr stop
+                        #endlocal
+                        
+20C0:                   instr_wait:
+20C0: C5       [11]     	push bc
+20C1: 0601     [18]     	ld b, 1
+                        #local
+20C3:                   rep:
+20C3: CD6000   [17]     	call wait
+20C6: 10FB     [25|30]  	djnz rep
+                        #endlocal
+20C8: C1       [35]     	pop bc
+20C9: C9       [45]     	ret
+                        
+20CA:                   clear_vga_screen:
+20CA: D5       [11]     	push de
+20CB: 210000   [21]     	ld hl, 0
+20CE: 1603     [28]     	ld d, 3
+                        #local
+20D0: 3E00     [35]     	ld a, 0
+20D2:                   outer_loop:
+20D2: 06C8     [ 7]     	ld b, 200
+20D4:                   inner_loop:
+20D4: CDE020   [17]     	call set_cell_sprite
+20D7: 23       [23]     	inc hl
+20D8: 10FA     [31|36]  	djnz inner_loop
+20DA: 15       [35]     	dec d
+20DB: C2D220   [45|45]  	jp nz, outer_loop
+                        	;dec bc
+                        	;jr nz, clear_next_char 
+                        #endlocal
+20DE: D1       [55]     	pop de
+20DF: C9       [65]     	ret
+                        
+                        
+20E0:                   set_cell_sprite:
+                        	; a has sprite (0..128)
+                        	; hl is onscreen sprite index (y * 30 + x)
+                        
+20E0: C5       [11]     	push bc
+20E1: D5       [22]     	push de
+20E2: E5       [33]     	push hl
+20E3: F5       [44]     	push af
+                        
+                        	; instruction
+                        	; 1) data enable goes low
+                        	; 2) set data output bits to instruction 0x7
+                        	; 3) control enable pin goes low
+                        	; 4) write pin goes low
+                        	; 5) chip enable pin goes low
+20E4: 1607     [51]     	ld d, 0x07
+20E6: 1EF0     [58]     	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE | VGA_CHIP_ENABLE)
+20E8: CDB620   [75]     	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; 6) chip enable pin goes high
+20EB: 1EF8     [82]     	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE)
+20ED: CDB620   [99]     	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; arg 1 : a >> 6 
+                        	; 7) set data output bits to arg1
+                        	; 8) chip enable pin goes low
+20F0: F1       [109]    	pop af
+20F1: F5       [120]    	push af
+20F2: 1F       [124]    	rra
+20F3: 1F       [128]    	rra
+20F4: 1F       [132]    	rra
+20F5: 1F       [136]    	rra
+20F6: 1F       [140]    	rra
+20F7: 1F       [144]    	rra 
+20F8: 57       [148]    	ld d, a
+20F9: 1EF0     [155]    	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE | VGA_CHIP_ENABLE)
+20FB: CDB620   [172]    	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; 9) chip enable pin goes high
+20FE: 1EF8     [179]    	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE)
+2100: CDB620   [196]    	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; arg 2 : (a << 2) + h
+                        	; 10) set data output bits to arg2
+                        	; 11) chip enable pin goes low
+2103: F1       [206]    	pop af
+2104: F5       [217]    	push af
+2105: 17       [221]    	rla
+2106: 17       [225]    	rla
+2107: 84       [229]    	add a, h
+2108: 57       [233]    	ld d, a
+2109: 1EF0     [240]    	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE | VGA_CHIP_ENABLE)
+210B: CDB620   [257]    	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; 12) chip enable pin goes high
+210E: 1EF8     [264]    	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE)
+2110: CDB620   [281]    	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; arg 3 : l
+                        	; 13) set data output bits to arg2
+                        	; 14) chip enable pin goes low
+2113: 55       [285]    	ld d, l
+2114: 1EF0     [292]    	ld e, ~(VGA_CONTROL_ENABLE | VGA_DATA_ENABLE | VGA_WRITE_ENABLE | VGA_CHIP_ENABLE)
+2116: CDB620   [309]    	call PIO2Out
+                        	;call instr_wait
+                        
+                        	; wrap up
+                        	; 15) chip enable pin goes high
+                        	; 16) write pin goes high
+                        	; 17) control enable pin goes high
+                        	; 18) data enable goes low
+2119: 1EFF     [316]    	ld e, ~0
+211B: CDB620   [333]    	call PIO2Out
+                        	;call instr_wait
+                        
+211E: F1       [343]    	pop af
+211F: E1       [353]    	pop hl
+2120: D1       [363]    	pop de
+2121: C1       [373]    	pop bc
+2122: C9       [383]    	ret
+                        
+                        
+                        	; REFERENCE
+                        	; instruction
+                        	; 1) data enable goes low
+                        	; 2) set data output bits to instruction 0x7
+                        	; 3) control enable pin goes low
+                        	; 4) write pin goes low
+                        	; 5) chip enable pin goes low
+                        	; 6) chip enable pin goes high
+                        	; arg 1
+                        	; 7) set data output bits to arg1
+                        	; 8) chip enable pin goes low
+                        	; 9) chip enable pin goes high
+                        	; arg 2
+                        	; 10) set data output bits to arg2
+                        	; 11) chip enable pin goes low
+                        	; 12) chip enable pin goes high
+                        	; arg 3
+                        	; 13) set data output bits to arg2
+                        	; 14) chip enable pin goes low
+                        	; 15) chip enable pin goes high
+                        	; wrap up
+                        	; 16) write pin goes high
+                        	; 17) control enable pin goes high
+                        	; 18) data enable goes low
+                        
+                        ;def arg_calc(x, y, sprite_index):
+                        ;'	offset = y * 30 + x
+                        ;	return {"arg1": sprite_index >> 6, "arg2": ((sprite_index << 2) & 0xff) + (offset >> 8), "arg3": offset & 0xff}
+                        
+                        
+                        
+2123:                   vga_charout:
+2123: EB       [ 4]     	ex de,hl
+2124: CD3B21   [21]     	call sprite_from_ascii
+2127: CDE020   [38]     	call set_cell_sprite
+212A: EB       [42]     	ex de,hl
+212B: C9       [52]     	ret
+                        
+212C:                   vga_text_out:
+212C: D5       [11]     	push de
+                        #local
+212D:                   soutloop:
+212D: 7E       [ 7]     	ld a, (hl)
+212E: B7       [11]     	or a
+212F: 2808     [18|23]  	jr z, done
+2131: CD2321   [35]     	call vga_charout
+2134: 23       [41]     	inc hl
+2135: 13       [47]     	inc de
+2136: C32D21   [57]     	jp soutloop
+2139:                   done:
+2139: D1       [10]     	pop de
+213A: C9       [20]     	ret
+                        #endlocal
+                        
+213B:                   sprite_from_ascii:
+                        	; register a contains ascii character and this function updates it to sprite corresponding the char
+213B: D620     [ 7]     	sub 32
+213D: C9       [17]     	ret
+                        
+213E:                   gz80_welcome:
+                        	;call gz80_welcome_old
+213E: CD8321   [17]     	call gz80_welcome_string
+2141: C9       [27]     	ret
+                        
+2142:                   update_clock:
+2142: 216921   [10]     	ld hl, TMP_CLOCK_STR
+2145: 23       [16]     	inc hl
+2146: 23       [22]     	inc hl
+2147: 23       [28]     	inc hl
+2148: 23       [34]     	inc hl
+2149: 23       [40]     	inc hl
+214A: 23       [46]     	inc hl
+214B: 23       [52]     	inc hl
+                        
+                        	; format clock
+214C: B7       [56]     	or a
+214D: 3A5020   [69]     	ld a, (T_MINUTES)
+2150: CD9406   [86]     	call DigitU8_ToASCII
+                        
+2153: 23       [92]     	inc hl
+2154: 23       [98]     	inc hl
+                        
+2155: 363A     [108]    	ld (hl), ':'
+2157: 23       [114]    	inc hl
+                        
+2158: B7       [118]    	or a
+2159: 3A4E20   [131]    	ld a, (T_SECONDS)
+215C: CD9406   [148]    	call DigitU8_ToASCII
+                        
+215F: 111200   [158]    	ld de, 18
+2162: 216921   [168]    	ld hl, TMP_CLOCK_STR
+2165: CD2C21   [185]    	call vga_text_out
+2168: C9       [195]    	ret
+                        
+2169: 55505449          TMP_CLOCK_STR .asciz "UPTIME        "
+216D: 4D452020          
+2171: 20202020          
+2175: 202000            
+2178: 475A3830          GZ80_VGA_WELCOME .asciz "GZ80 V0.42"
+217C: 2056302E          
+2180: 343200            
+                        
+2183:                   gz80_welcome_string:
+2183: 110000   [10]     	ld de, 0
+2186: 217821   [20]     	ld hl, GZ80_VGA_WELCOME
+2189: CD2C21   [37]     	call vga_text_out
+218C: C9       [47]     	ret
 
 
 ; +++ segments +++
 
-#CODE _CODE    = $2082 =  8322,  size = $0100 =   256
+#CODE _CODE    = $2082 =  8322,  size = $0200 =   512
 
 ; +++ global symbols +++
 
@@ -157,14 +429,15 @@ DISP_LINE         = $2029 =  8233          bios_include.asm:5 (unused)
 DSP_CLR           = $0001 =     1          bios_include.asm:6 (unused)
 DSP_DW            = $0005 =     5          bios_include.asm:7 (unused)
 DSP_IR            = $0003 =     3          bios_include.asm:8 (unused)
-DSP_IRC           = $0002 =     2          bios_include.asm:9 (unused)
+DSP_IRC           = $0002 =     2          vga.asm:8 (unused)
 DSP_IW            = $0001 =     1          bios_include.asm:10 (unused)
 DSP_MI            = $0006 =     6          bios_include.asm:11 (unused)
 DSP_ON            = $000E =    14          bios_include.asm:12 (unused)
 DSP_RH            = $0002 =     2          bios_include.asm:13 (unused)
 DigitU16_ToASCII  = $06BD =  1725          bios_include.asm:104 (unused)
-DigitU8_ToASCII   = $0694 =  1684          bios_include.asm:105 (unused)
+DigitU8_ToASCII   = $0694 =  1684          bios_include.asm:105
 DigitU8_ToASCII_3digit = $0686 =  1670          bios_include.asm:106 (unused)
+GZ80_VGA_WELCOME  = $2178 =  8568  _CODE   vga.asm:290
 Hex1              = $0376 =   886          bios_include.asm:14 (unused)
 HexToNum          = $0365 =   869          bios_include.asm:15 (unused)
 INT_YO            = $0626 =  1574          bios_include.asm:16 (unused)
@@ -188,6 +461,11 @@ PEEK5_CMD         = $03F2 =  1010          bios_include.asm:33 (unused)
 PEEK6_CMD         = $03F9 =  1017          bios_include.asm:34 (unused)
 PEEK7_CMD         = $0400 =  1024          bios_include.asm:35 (unused)
 PEEK_CMD          = $0407 =  1031          bios_include.asm:36 (unused)
+PIO2A             = $0020 =    32          vga.asm:3
+PIO2AC            = $0022 =    34          vga.asm:5
+PIO2B             = $0021 =    33          vga.asm:4
+PIO2BC            = $0023 =    35          vga.asm:6
+PIO2Out           = $20B6 =  8374  _CODE   vga.asm:60
 PORTA             = $0004 =     4          bios_include.asm:37 (unused)
 PORTAC            = $0006 =     6          bios_include.asm:38 (unused)
 PORTB             = $0005 =     5          bios_include.asm:39 (unused)
@@ -204,37 +482,48 @@ SERIAL_INIT       = $0043 =    67          bios_include.asm:49 (unused)
 SHELL             = $0612 =  1554          bios_include.asm:50 (unused)
 SPADDR            = $4000 = 16384          bios_include.asm:51 (unused)
 Str1IsBigger      = $01BB =   443          bios_include.asm:52 (unused)
+TMP_CLOCK_STR     = $2169 =  8553  _CODE   vga.asm:289
 TMP_STR           = $202A =  8234          bios_include.asm:99 (unused)
-TXT               = $2084 =  8324  _CODE   vga.asm:10
+TXT               = $2084 =  8324  _CODE   vga.asm:23
 T_MILIS           = $204C =  8268          bios_include.asm:100 (unused)
-T_MINUTES         = $2050 =  8272          bios_include.asm:101 (unused)
+T_MINUTES         = $2050 =  8272          bios_include.asm:101
 T_RAW_MILIS       = $204A =  8266          bios_include.asm:102 (unused)
-T_SECONDS         = $204E =  8270          bios_include.asm:103 (unused)
+T_SECONDS         = $204E =  8270          bios_include.asm:103
+VGA_CHIP_ENABLE   = $0008 =     8          vga.asm:14
+VGA_CONTROL_ENABLE = $0002 =     2          vga.asm:12
+VGA_DATA_ENABLE   = $0001 =     1          vga.asm:11
+VGA_WRITE_ENABLE  = $0004 =     4          vga.asm:13
 WELCOME           = $05FE =  1534          bios_include.asm:54 (unused)
-_CODE             = $2082 =  8322  _CODE   bios_include.asm:2 (unused)
-_CODE_end         = $2182 =  8578  _CODE   bios_include.asm:2 (unused)
-_CODE_size        = $0100 =   256  _CODE   bios_include.asm:2 (unused)
+_CODE             = $2082 =  8322  _CODE   bios_include.asm:15 (unused)
+_CODE_end         = $2282 =  8834  _CODE   bios_include.asm:15 (unused)
+_CODE_size        = $0200 =   512  _CODE   bios_include.asm:15 (unused)
 app_ret           = $03A4 =   932          bios_include.asm:55
 backspace         = $00B8 =   184          bios_include.asm:56 (unused)
 charout           = $008E =   142          bios_include.asm:57 (unused)
+clear_vga_screen  = $20CA =  8394  _CODE   vga.asm:86
 cleardisplay      = $00F5 =   245          bios_include.asm:58
 commandeval       = $0417 =  1047          bios_include.asm:59 (unused)
 copy_screen_to_temp = $03A8 =   936          bios_include.asm:60 (unused)
 default_lcd_lines = $00DC =   220          bios_include.asm:61 (unused)
 disablecursor     = $045B =  1115          bios_include.asm:62 (unused)
 display_app_bytes = $0262 =   610          bios_include.asm:63 (unused)
-exit              = $20A3 =  8355  _CODE   vga.asm:27 (unused)
+exit              = $20AC =  8364  _CODE   vga.asm:46 (unused)
 exwait            = $0068 =   104          bios_include.asm:64 (unused)
+freeze            = $20BD =  8381  _CODE   vga.asm:68 (unused)
+gz80_welcome      = $213E =  8510  _CODE   vga.asm:254
+gz80_welcome_string = $2183 =  8579  _CODE   vga.asm:292
 init_ps2_keyboard = $0566 =  1382          bios_include.asm:65 (unused)
 initdisplay       = $0189 =   393          bios_include.asm:66 (unused)
 initpio           = $004D =    77          bios_include.asm:67 (unused)
+initpio2          = $20AF =  8367  _CODE   vga.asm:51
 initserial        = $0054 =    84          bios_include.asm:68 (unused)
+instr_wait        = $20C0 =  8384  _CODE   vga.asm:75 (unused)
 interrupt_handler = $0633 =  1587          bios_include.asm:69 (unused)
 keystroke         = $203E =  8254          bios_include.asm:70 (unused)
 line_feed         = $0162 =   354          bios_include.asm:71 (unused)
 load              = $01FA =   506          bios_include.asm:72 (unused)
-longwait          = $0072 =   114          bios_include.asm:73
-main              = $208E =  8334  _CODE   vga.asm:12
+longwait          = $0072 =   114          bios_include.asm:73 (unused)
+main              = $208E =  8334  _CODE   vga.asm:25
 monitor           = $067B =  1659          bios_include.asm:74 (unused)
 mstringout        = $00C2 =   194          bios_include.asm:75
 newline_char      = $00BD =   189          bios_include.asm:76 (unused)
@@ -248,20 +537,43 @@ raw_textout       = $00CF =   207          bios_include.asm:83 (unused)
 reset             = $01D3 =   467          bios_include.asm:84 (unused)
 return_shell      = $0130 =   304          bios_include.asm:85 (unused)
 run_app           = $0392 =   914          bios_include.asm:86 (unused)
-runloop           = $2091 =  8337  _CODE   vga.asm:15
+runloop           = $20A7 =  8359  _CODE   vga.asm:41
 scancode          = $2042 =  8258          bios_include.asm:87 (unused)
 set_carret_2nd_line = $0112 =   274          bios_include.asm:88 (unused)
 set_carret_home   = $0103 =   259          bios_include.asm:89 (unused)
 set_carret_raw    = $011A =   282          bios_include.asm:90
+set_cell_sprite   = $20E0 =  8416  _CODE   vga.asm:107
 set_def_mon_address = $066A =  1642          bios_include.asm:91 (unused)
 sioout            = $008A =   138          bios_include.asm:92 (unused)
 skip              = $00B8 =   184          bios_include.asm:93 (unused)
 soutloop          = $00C4 =   196          bios_include.asm:94 (unused)
-wait              = $0060 =    96          bios_include.asm:95 (unused)
+sprite_from_ascii = $213B =  8507  _CODE   vga.asm:249
+update_clock      = $2142 =  8514  _CODE   vga.asm:259
+vga_charout       = $2123 =  8483  _CODE   vga.asm:226
+vga_text_out      = $212C =  8492  _CODE   vga.asm:233
+wait              = $0060 =    96          bios_include.asm:95
 wait_keystroke    = $051B =  1307          bios_include.asm:96 (unused)
 wait_ps2_scancode = $0574 =  1396          bios_include.asm:97 (unused)
 waitserial        = $04ED =  1261          bios_include.asm:98 (unused)
 
+; +++ local symbols +++
 
-total time: 0.0034 sec.
+stop    = $20BD =  8381  _CODE   vga.asm:70
+
+; +++ local symbols +++
+
+rep     = $20C3 =  8387  _CODE   vga.asm:79
+
+; +++ local symbols +++
+
+inner_loop = $20D4 =  8404  _CODE   vga.asm:94
+outer_loop = $20D2 =  8402  _CODE   vga.asm:92
+
+; +++ local symbols +++
+
+done     = $2139 =  8505  _CODE   vga.asm:244
+soutloop = $212D =  8493  _CODE   vga.asm:236
+
+
+total time: 0.0075 sec.
 no errors
